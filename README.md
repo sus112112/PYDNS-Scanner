@@ -43,12 +43,13 @@
 - **Username/Password Fields** - Hidden by default, shown when Proxy Auth is enabled
 - **HTTP & SOCKS5 Auth** - Authentication applied to both HTTP and SOCKS5 proxy tests
 
-### ⌨️ New Keybindings
-- **S** - Start scan
+### ⌨️ Keyboard Shortcuts
+- **S** - Start scan (from config screen)
 - **Q** - Quit application
-- **P** - Pause/Resume scan
-- **R** - Shuffle remaining IPs
-- **X** - Export results
+- **C** - Copy/Save results to file
+- **P** - Pause scan (while scanning)
+- **R** - Resume scan (when paused)
+- **S** - Shuffle remaining IPs (when paused)
 
 ### 🔔 Improved Audio
 - **Single Coin Sound** - Clean, single sparkle/coin notification on successful proxy test
@@ -283,8 +284,14 @@ Create a text file with one CIDR range per line:
 
 ## ⌨️ Keyboard Shortcuts
 
-- `q` - Quit the application
-- `s` - Save current results
+| Key | When | Action |
+|-----|------|--------|
+| `s` | Config screen | Start scan |
+| `q` | Anytime | Quit application |
+| `c` | While scanning | Copy/Save results |
+| `p` | While scanning | Pause scan |
+| `r` | When paused | Resume scan |
+| `s` | When paused | Shuffle remaining IPs |
 
 ## 🎮 Control Buttons
 
