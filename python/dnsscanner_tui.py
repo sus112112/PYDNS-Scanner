@@ -2637,17 +2637,28 @@ class DNSScannerTUI(App):
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle double-click on DNS row to copy IP to clipboard."""
-        table = self.query_one("#results-table", DataTable)
-        row_key = event.row_key
-        row = table.get_row(row_key)
-        
-        if row and len(row) > 0:
-            ip = str(row[0]).strip()
-            try:
-                pyperclip.copy(ip)
-                self.notify(f"{ip} copied!", severity="information", timeout=2)
-            except Exception as e:
-                self.notify(f"Copy failed: {str(e)[:30]}", severity="warning")
+        try:
+            table = self.query_one("#results-table", DataTable)
+            row_key = event.row_key
+            
+            # Check if row_key exists in table
+            if row_key not in table._row_locations:
+                return
+            
+            row = table.get_row(row_key)
+            
+            if row and len(row) > 0:
+                # Extract IP - remove any Rich markup
+                ip_raw = str(row[0])
+                # Strip Rich tags if present
+                import re
+                ip = re.sub(r'\[.*?\]', '', ip_raw).strip()
+                
+                if ip:
+                    pyperclip.copy(ip)
+                    self.notify(f"{ip} copied!", severity="information", timeout=2)
+        except Exception as e:
+            logger.debug(f"Row selection error: {e}")
 
     def _auto_save_results(self) -> None:
         """Auto-save results at end of scan.
