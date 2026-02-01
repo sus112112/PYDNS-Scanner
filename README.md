@@ -31,7 +31,31 @@
   This tool can scan millions of IP addresses to find working DNS servers with optional Slipstream proxy testing and automatic multi-platform client download.
 </div>
 
-## 🎉 What's New in v1.1.0
+## 🎉 What's New in v1.2.0
+
+### 🎨 Visual & UX Improvements
+- **Small Screen Support** - Fixed height issues on small screen devices with scrollable form
+- **Enhanced Status Tracking** - Real-time Pass/Fail/Found statistics with color-coded display (white=Found, green=Pass, red=Fail)
+- **Failed Servers at End** - Failed proxy tests now appear at the bottom of results list
+
+### 🔐 Proxy Authentication
+- **Proxy Auth Support** - New toggle checkbox for proxies requiring authentication
+- **Username/Password Fields** - Hidden by default, shown when Proxy Auth is enabled
+- **HTTP & SOCKS5 Auth** - Authentication applied to both HTTP and SOCKS5 proxy tests
+
+### ⌨️ New Keybindings
+- **S** - Start scan
+- **Q** - Quit application
+- **P** - Pause/Resume scan
+- **R** - Shuffle remaining IPs
+- **X** - Export results
+
+### 🔔 Improved Audio
+- **Single Coin Sound** - Clean, single sparkle/coin notification on successful proxy test
+
+---
+
+## 📦 What's in v1.1.0
 
 ### 🎨 Visual & UX Improvements
 - **GitHub Dark Theme** - Beautiful dark mode with GitHub-style colors (#0d1117 background, #58a6ff accents)

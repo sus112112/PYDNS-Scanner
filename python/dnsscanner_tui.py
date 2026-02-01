@@ -596,6 +596,8 @@ class StatsWidget(Static):
     """Display scan statistics."""
 
     found = reactive(0)
+    passed = reactive(0)
+    failed = reactive(0)
     scanned = reactive(0)
     total = reactive(0)
     speed = reactive(0.0)
@@ -607,7 +609,9 @@ class StatsWidget(Static):
 
 [yellow]Total IPs:[/yellow] {self.total:,}
 [yellow]Scanned:[/yellow] {self.scanned:,}
-[green]Found:[/green] {self.found}
+[white]Found:[/white] {self.found}
+[green]Pass:[/green] {self.passed}
+[red]Fail:[/red] {self.failed}
 [yellow]Speed:[/yellow] {self.speed:.1f} IPs/sec
 [yellow]Elapsed:[/yellow] {self.elapsed:.1f}s
 """
@@ -684,10 +688,12 @@ class DNSScannerTUI(App):
     
     #start-form {
         width: 100%;
-        height: 100%;
+        height: auto;
+        max-height: 100%;
         border: solid #30363d;
         background: #161b22;
         padding: 2;
+        overflow-y: auto;
     }
     
     #start-title {
@@ -728,7 +734,8 @@ class DNSScannerTUI(App):
     
     #file-browser-container {
         width: 100%;
-        height: 15;
+        height: 10;
+        max-height: 15;
         border: solid #238636;
         background: #161b22;
         margin: 1 0;
@@ -803,6 +810,14 @@ class DNSScannerTUI(App):
         height: auto;
         align: center middle;
         margin-top: 2;
+    }
+    
+    #proxy-auth-container {
+        width: 100%;
+        height: auto;
+        display: none;
+        padding: 0;
+        margin: 0;
     }
     
     /* Scan Screen Styles */
@@ -936,6 +951,7 @@ class DNSScannerTUI(App):
     """
 
     BINDINGS = [
+        ("s", "start_scan", "Start"),
         ("q", "quit", "Quit"),
     ]
 
@@ -949,6 +965,9 @@ class DNSScannerTUI(App):
         self.random_subdomain = False
         self.test_slipstream = False
         self.bell_sound_enabled = False  # Bell sound on pass
+        self.proxy_auth_enabled = False  # Proxy authentication
+        self.proxy_username = ""  # Proxy username
+        self.proxy_password = ""  # Proxy password
         
         # Config file for caching settings
         self.config_dir = Path.home() / ".pydns-scanner"
@@ -1013,6 +1032,18 @@ class DNSScannerTUI(App):
                 with Horizontal(classes="form-row"):
                     yield Label("Domain:", classes="form-label")
                     yield Input(placeholder="e.g., google.com", id="input-domain", classes="form-input", value="google.com")
+                
+                with Horizontal(classes="form-row"):
+                    yield Label("Proxy Auth:", classes="form-label")
+                    yield Checkbox("Enable", id="input-proxy-auth")
+                
+                with Container(id="proxy-auth-container"):
+                    with Horizontal(classes="form-row"):
+                        yield Label("Username:", classes="form-label")
+                        yield Input(placeholder="proxy username", id="input-proxy-user", classes="form-input")
+                    with Horizontal(classes="form-row"):
+                        yield Label("Password:", classes="form-label")
+                        yield Input(placeholder="proxy password", id="input-proxy-pass", classes="form-input", password=True)
                 
                 with Horizontal(classes="form-row"):
                     yield Label("DNS Type:", classes="form-label")
@@ -1095,6 +1126,9 @@ class DNSScannerTUI(App):
         """Initialize when app is mounted."""
         # Set dark theme (GitHub dark)
         self.dark = True
+        
+        # Initialize keybindings for start screen
+        self._update_keybinding_visibility(scanning=False, paused=False)
         
         # Hide scan screen initially
         self.query_one("#scan-screen").display = False
@@ -1222,8 +1256,9 @@ class DNSScannerTUI(App):
                         ("p", "pause_scan", "Pause"),
                     ]
             else:
-                # Start screen - only show Quit
+                # Start screen - show Start and Quit
                 self.__class__.BINDINGS = [
+                    ("s", "start_scan", "Start"),
                     ("q", "quit", "Quit"),
                 ]
             
@@ -1248,6 +1283,16 @@ class DNSScannerTUI(App):
         """Keybinding action to shuffle IPs (only when paused)."""
         if self.scan_started and self.is_paused:
             self.run_worker(self._shuffle_remaining_ips_async(), exclusive=False)
+    
+    def action_start_scan(self) -> None:
+        """Keybinding action to start scan from config screen."""
+        if not self.scan_started:
+            try:
+                start_screen = self.query_one("#start-screen")
+                if start_screen.display:
+                    self._start_scan_from_form()
+            except Exception:
+                pass
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button clicks."""
@@ -1287,6 +1332,15 @@ class DNSScannerTUI(App):
             else:
                 # Hide browser for other selections
                 browser.display = False
+    
+    def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
+        """Handle checkbox state changes."""
+        if event.checkbox.id == "input-proxy-auth":
+            try:
+                container = self.query_one("#proxy-auth-container")
+                container.display = event.value
+            except Exception:
+                pass
 
     def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
         """Handle file selection from directory tree."""
@@ -1305,6 +1359,19 @@ class DNSScannerTUI(App):
         # Notify user which file was selected
         file_name = Path(selected_file).name
         self.notify(f"Selected: {file_name}", severity="information", timeout=3)
+    
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Handle Enter key press in input fields on start screen."""
+        # Only handle inputs on start screen
+        if event.input.id in ["input-domain", "input-concurrency"]:
+            # Check if start screen is visible
+            try:
+                start_screen = self.query_one("#start-screen")
+                if start_screen.display:
+                    # Start the scan when Enter is pressed
+                    self._start_scan_from_form()
+            except Exception:
+                pass
 
     def _pause_scan(self) -> None:
         """Pause the current scan."""
@@ -1394,6 +1461,18 @@ class DNSScannerTUI(App):
         self.random_subdomain = random_checkbox.value
         self.test_slipstream = slipstream_checkbox.value
         self.bell_sound_enabled = bell_checkbox.value
+        
+        # Get proxy auth settings
+        proxy_auth_checkbox = self.query_one("#input-proxy-auth", Checkbox)
+        self.proxy_auth_enabled = proxy_auth_checkbox.value
+        if self.proxy_auth_enabled:
+            proxy_user_input = self.query_one("#input-proxy-user", Input)
+            proxy_pass_input = self.query_one("#input-proxy-pass", Input)
+            self.proxy_username = proxy_user_input.value.strip()
+            self.proxy_password = proxy_pass_input.value
+            if not self.proxy_username:
+                self.notify("Please enter proxy username!", severity="error")
+                return
         
         try:
             self.concurrency = int(concurrency_input.value.strip() or "100")
@@ -1755,6 +1834,8 @@ class DNSScannerTUI(App):
             stats = self.query_one("#stats", StatsWidget)
             stats.scanned = self.current_scanned
             stats.found = len(self.found_servers)
+            stats.passed = len([ip for ip, r in self.proxy_results.items() if r == "Success"])
+            stats.failed = len([ip for ip, r in self.proxy_results.items() if r == "Failed"])
             elapsed = time.time() - self.start_time
             stats.elapsed = elapsed
             stats.speed = self.current_scanned / elapsed if elapsed > 0 else 0
@@ -1963,7 +2044,9 @@ class DNSScannerTUI(App):
                     stats.scanned = self.current_scanned
                     stats.elapsed = elapsed
                     stats.speed = self.current_scanned / elapsed if elapsed > 0 else 0
-                    stats.found = len(self.found_servers)  # Use actual found count (after removals)
+                    stats.found = len(self.found_servers)
+                    stats.passed = len([ip for ip, r in self.proxy_results.items() if r == "Success"])
+                    stats.failed = len([ip for ip, r in self.proxy_results.items() if r == "Failed"])
                     
                     progress_bar = self.query_one("#progress-bar", CustomProgressBar)
                     progress_bar.update_progress(self.current_scanned, stats.total)
@@ -2124,7 +2207,7 @@ class DNSScannerTUI(App):
             # 2. Testing status
             # 3. Queued/Pending
             # 4. N/A status
-            # 5. Failed tests (last) - but only show if slipstream disabled
+            # 5. Failed tests (at the end)
             table.clear()
             
             def sort_key(item):
@@ -2141,18 +2224,13 @@ class DNSScannerTUI(App):
                 elif proxy_status == "N/A":
                     priority = 3
                 else:  # Failed
-                    # If slipstream is enabled, failed tests are removed from server_times
-                    # so this shouldn't happen, but handle it just in case
                     priority = 4
                 
                 # Sort by priority first, then by response time
                 return (priority, server_time)
             
-            # Only show servers that are still in found_servers (failed ones removed)
-            active_servers = {ip: time for ip, time in self.server_times.items() 
-                            if ip in self.found_servers}
-            
-            sorted_servers = sorted(active_servers.items(), key=sort_key)
+            # Show all servers including failed ones
+            sorted_servers = sorted(self.server_times.items(), key=sort_key)
             
             for server_ip, server_time in sorted_servers:
                 server_ms = server_time * 1000
@@ -2204,6 +2282,16 @@ class DNSScannerTUI(App):
                 result = await self._test_slipstream_proxy(dns_ip, port)
                 self.proxy_results[dns_ip] = result
                 
+                # Update stats
+                try:
+                    stats = self.query_one("#stats", StatsWidget)
+                    if result == "Success":
+                        stats.passed = len([ip for ip, r in self.proxy_results.items() if r == "Success"])
+                    else:
+                        stats.failed = len([ip for ip, r in self.proxy_results.items() if r == "Failed"])
+                except Exception:
+                    pass
+                
                 if result == "Success":
                     self._log(f"[green]✓ Proxy test PASSED: {dns_ip}[/green]")
                     # Play bell sound if enabled
@@ -2211,17 +2299,9 @@ class DNSScannerTUI(App):
                         self._play_bell_sound()
                 else:
                     self._log(f"[red]✗ Proxy test FAILED: {dns_ip}[/red]")
-                    # Remove failed proxy test from found servers if slipstream is enabled
-                    if self.test_slipstream and dns_ip in self.found_servers:
-                        self.found_servers.remove(dns_ip)
-                        if dns_ip in self.server_times:
-                            del self.server_times[dns_ip]
-                        self._log(f"[yellow]Removed {dns_ip} from results (failed proxy test)[/yellow]")
-                        # Force table rebuild to reflect removal
-                        self.table_needs_rebuild = True
-                        self._rebuild_table()
-                        # Trigger GC after removal
-                        gc.collect()
+                    # Keep failed in list but at the end (handled by sort_key in _rebuild_table)
+                    self.table_needs_rebuild = True
+                    self._rebuild_table()
                 
                 self._update_table_row(dns_ip)  # Update UI with final result
                 
@@ -2307,11 +2387,20 @@ class DNSScannerTUI(App):
             
             # Test the proxy with google.com using dynamic port
             # Mid-high timeout (15 seconds) as requested
-            proxy_url = f"http://127.0.0.1:{port}"
+            # Build proxy URL with optional authentication
+            if self.proxy_auth_enabled and self.proxy_username:
+                from urllib.parse import quote
+                encoded_user = quote(self.proxy_username, safe='')
+                encoded_pass = quote(self.proxy_password, safe='')
+                proxy_url = f"http://{encoded_user}:{encoded_pass}@127.0.0.1:{port}"
+                proxy_url_log = f"http://{self.proxy_username}:****@127.0.0.1:{port}"
+            else:
+                proxy_url = f"http://127.0.0.1:{port}"
+                proxy_url_log = proxy_url
             test_success = False
             
             # Try HTTP proxy first
-            logger.info(f"[{dns_ip}] Testing HTTP proxy at {proxy_url}")
+            logger.info(f"[{dns_ip}] Testing HTTP proxy at {proxy_url_log}")
             try:
                 logger.debug(f"[{dns_ip}] Creating HTTP client with proxy={proxy_url}, timeout=15.0")
                 async with httpx.AsyncClient(
@@ -2341,12 +2430,18 @@ class DNSScannerTUI(App):
                 logger.warning(f"[{dns_ip}] HTTP proxy test failed: {type(http_err).__name__}: {str(http_err)}")
                 logger.debug(f"[{dns_ip}] HTTP error details:", exc_info=True)
                 
-                # Try SOCKS5 proxy
-                logger.info(f"[{dns_ip}] Testing SOCKS5 proxy at 127.0.0.1:{port}")
+                # Try SOCKS5 proxy with optional authentication
+                if self.proxy_auth_enabled and self.proxy_username:
+                    socks5_url = f"socks5://{encoded_user}:{encoded_pass}@127.0.0.1:{port}"
+                    socks5_url_log = f"socks5://{self.proxy_username}:****@127.0.0.1:{port}"
+                else:
+                    socks5_url = f"socks5://127.0.0.1:{port}"
+                    socks5_url_log = socks5_url
+                logger.info(f"[{dns_ip}] Testing SOCKS5 proxy at {socks5_url_log}")
                 try:
-                    logger.debug(f"[{dns_ip}] Creating SOCKS5 client with proxy=socks5://127.0.0.1:{port}, timeout=15.0")
+                    logger.debug(f"[{dns_ip}] Creating SOCKS5 client with proxy={socks5_url_log}, timeout=15.0")
                     async with httpx.AsyncClient(
-                        proxy=f"socks5://127.0.0.1:{port}",
+                        proxy=socks5_url,
                         timeout=15.0,  # Mid-high timeout
                         follow_redirects=True
                     ) as client:
@@ -2507,40 +2602,29 @@ class DNSScannerTUI(App):
         self.notify(f"Shuffled {untested_count} untested IPs", severity="information")
 
     def _play_bell_sound(self) -> None:
-        """Play a sparkle sound with error handling for systems without sound support."""
+        """Play a single coin/sparkle sound with error handling for systems without sound support."""
         try:
-            # Try to play sparkle sound
             if platform.system() == "Windows":
-                # Windows sparkle effect - ascending tones
+                # Windows - single high-pitched coin sparkle sound
                 import winsound
-                # Play a nice ascending sparkle pattern
-                winsound.Beep(800, 50)   # First tone
-                winsound.Beep(1000, 50)  # Second tone
-                winsound.Beep(1200, 80)  # Third tone (longer)
+                winsound.Beep(1400, 60)  # Single bright coin-like tone
             elif platform.system() == "Darwin":
-                # macOS - try system sound, fallback to multiple bells
+                # macOS - try system coin sound
                 try:
                     import subprocess
-                    subprocess.run(["afplay", "/System/Library/Sounds/Glass.aiff"], check=False, timeout=1)
+                    subprocess.run(["afplay", "/System/Library/Sounds/Tink.aiff"], check=False, timeout=1)
                 except Exception:
-                    # Fallback to multiple terminal bells for sparkle effect
-                    print('\a', end='', flush=True)
-                    time.sleep(0.05)
                     print('\a', end='', flush=True)
             else:
-                # Linux/Unix - multiple terminal bells for sparkle effect
-                print('\a', end='', flush=True)
-                time.sleep(0.05)
+                # Linux/Unix - single terminal bell
                 print('\a', end='', flush=True)
         except ImportError:
-            # winsound not available on non-Windows
             try:
                 print('\a', end='', flush=True)
             except Exception:
-                pass  # Silently fail if bell not supported
+                pass
         except Exception as e:
-            # Silently handle any sound errors (e.g., no sound card, server environment)
-            logger.debug(f"Sparkle sound failed: {e}")
+            logger.debug(f"Coin sound failed: {e}")
             pass
     
     def _log(self, message: str) -> None:
