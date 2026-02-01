@@ -1035,7 +1035,7 @@ class DNSScannerTUI(App):
                 
                 with Horizontal(classes="form-row"):
                     yield Label("Domain:", classes="form-label")
-                    yield Input(placeholder="e.g., google.com", id="input-domain", classes="form-input", value="google.com")
+                    yield Input(placeholder="e.g., google.com", id="input-domain", classes="form-input")
                 
                 with Horizontal(classes="form-row"):
                     yield Label("Proxy Auth:", classes="form-label")
@@ -1097,10 +1097,10 @@ class DNSScannerTUI(App):
             if self.config_file.exists():
                 with open(self.config_file, 'r') as f:
                     config = json.load(f)
-                    return config.get('last_domain', 'google.com')
+                    return config.get('last_domain', '')
         except Exception as e:
             logger.debug(f"Failed to load cached domain: {e}")
-        return 'google.com'
+        return ''
     
     def _save_domain_cache(self, domain: str) -> None:
         """Save domain to config file for next session."""

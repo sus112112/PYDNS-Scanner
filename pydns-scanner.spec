@@ -22,7 +22,7 @@ a = Analysis(
         'rich',
         'pyperclip',
     ],
-    hookspath=[],
+    hookspath=['./'],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
@@ -67,5 +67,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon='static/icon.png',
 )
