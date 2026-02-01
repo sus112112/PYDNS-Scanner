@@ -1,0 +1,133 @@
+name: Build Executables
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          pip install -r python/requirements.txt
+      
+      - name: Build Windows executable
+        run: pyinstaller --clean pydns-scanner.spec
+      
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pydns-scanner-windows
+          path: dist/pydns-scanner.exe
+          retention-days: 5
+
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          pip install -r python/requirements.txt
+      
+      - name: Build Linux executable
+        run: pyinstaller --clean pydns-scanner.spec
+      
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pydns-scanner-linux
+          path: dist/pydns-scanner
+          retention-days: 5
+
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          pip install -r python/requirements.txt
+      
+      - name: Build macOS executable
+        run: pyinstaller --clean pydns-scanner.spec
+      
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pydns-scanner-macos
+          path: dist/pydns-scanner
+          retention-days: 5
+
+  release:
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pydns-scanner-windows
+          path: ./artifacts/windows
+      
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pydns-scanner-linux
+          path: ./artifacts/linux
+      
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pydns-scanner-macos
+          path: ./artifacts/macos
+      
+      - name: Rename executables
+        run: |
+          mv ./artifacts/windows/pydns-scanner.exe ./pydns-scanner-windows.exe
+          mv ./artifacts/linux/pydns-scanner ./pydns-scanner-linux
+          mv ./artifacts/macos/pydns-scanner ./pydns-scanner-macos
+          chmod +x ./pydns-scanner-linux
+          chmod +x ./pydns-scanner-macos
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            pydns-scanner-windows.exe
+            pydns-scanner-linux
+            pydns-scanner-macos
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: false
